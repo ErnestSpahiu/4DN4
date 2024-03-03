@@ -15,6 +15,7 @@ import socket
 import sys
 from cryptography.fernet import Fernet
 import csv
+import pandas as pd
 ########################################################################
 # Echo Server class
 ########################################################################
@@ -161,15 +162,19 @@ class Server:
                 #load data from csv file
                 encrypt_key = ""
                 data = []
-                with open('course_grades_2024.csv', 'r') as file:
-                    reader = csv.reader(file)
-                    for row in reader:
-                        data.append(row)
+     
+                #store data by rows using pandas
+                df = pd.read_csv('course_grades_2024.csv')
+                data = df.values.tolist()
                 
                 #now check if the student id (2) is in the csv file
                 #if it is, then get the key (3)
+                #we want to check each row in the csv file so tranpose data
                 for row in data:
-                    if row[1] == student_id:
+                    #print given student id and id 1 from csv
+                    print("Student ID: ", student_id)
+                    print("ID in csv: ", row[1])
+                    if ((row[1]) == int(student_id)):
                         encrypt_key = row[2]
                         
                         #user was found, return data the command is requesting
@@ -181,13 +186,24 @@ class Server:
                             for row in data[1:]: #skipping header row
                                 sum_grades += float(row[7])
                                 num_grades += 1
-                    
                             avg_midterm_grade = sum_grades / num_grades
                             encrypted_message_bytes = encrypt(str(avg_midterm_grade), encrypt_key)
                             print("GMA: Encrypted: ", encrypted_message_bytes)
                             print("GMA: avg midterm grade: ", avg_midterm_grade)
-                        break
-                    else:
+                            break
+                        elif command_id == "GG":
+                            # get all grades of studens as a list col 3 - 12
+                            grades = []
+                            grades.append(row[3:12])
+                            encrypted_message_bytes = encrypt(str(grades), encrypt_key)
+                            print("GG: Encrypted: ", encrypted_message_bytes)
+                            print("GG: grades: ", grades)
+                            break
+                        else:
+                            print("Command ID not found")
+                            break
+                    #else if looped through all rows and student id not found
+                    elif (row == data[-1]):
                         print("Student ID not found")
                         break
 
@@ -303,26 +319,21 @@ class Client:
                 self.socket.close()
                 sys.exit(1)
 
-
-            #read in the key from the csv file
             encrypt_key = ""
-            data = []
-            with open('course_grades_2024.csv', 'r') as file:
-                reader = csv.reader(file)
-                for row in reader:
-                    data.append(row)
-            #find key using student id = self.input_text1
+            #read in the key from the csv file
+            df = pd.read_csv('course_grades_2024.csv')
+            data = df.values.tolist()
+            #get the key for the student id
             for row in data:
-                if row[1] == self.input_text1:
-                    encrypt_key = row[2]
+                if int(row[1]) == int(self.input_text1):
+                    encrypt_key = str(row[2])
                     break
-                else:
+                elif (row == data[-1]):
                     print("Student ID not found")
                     break
-            print("Key: ", encrypt_key)
             #need to decrypt the message received from the server
             decrypted_message = decypt(recvd_bytes, encrypt_key)
-            print("Received: ", recvd_bytes.decode(Server.MSG_ENCODING))
+            print("Received: ", decrypted_message)
 
         except Exception as msg:
             print(msg)
