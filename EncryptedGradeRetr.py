@@ -191,14 +191,64 @@ class Server:
                             print("GMA: Encrypted: ", encrypted_message_bytes)
                             print("GMA: avg midterm grade: ", avg_midterm_grade)
                             break
+                        elif command_id == "GL1A":
+                            # get lab 1 average of class (col 4)
+                            for row in data[1:]: #skipping header row
+                                sum_grades += float(row[3])
+                                num_grades += 1
+                            avg_lab1_grade = sum_grades / num_grades
+                            encrypted_message_bytes = encrypt(str(avg_lab1_grade), encrypt_key)
+                            print("GL1A: Encrypted: ", encrypted_message_bytes)
+                            print("GL1A: avg lab 1 grade: ", avg_lab1_grade)
+                            break
+                        elif command_id == "GL2A":
+                            # get lab 2 average of class (col 5)
+                            for row in data[1:]: #skipping header row
+                                sum_grades += float(row[4])
+                                num_grades += 1
+                            avg_lab2_grade = sum_grades / num_grades
+                            encrypted_message_bytes = encrypt(str(avg_lab2_grade), encrypt_key)
+                            print("GL1A: Encrypted: ", encrypted_message_bytes)
+                            print("GL1A: avg lab 2 grade: ", avg_lab2_grade)
+                            break
+                        elif command_id == "GL3A":
+                            # get lab 3 average of class (col 6)
+                            for row in data[1:]: #skipping header row
+                                sum_grades += float(row[5])
+                                num_grades += 1
+                            avg_lab3_grade = sum_grades / num_grades
+                            encrypted_message_bytes = encrypt(str(avg_lab3_grade), encrypt_key)
+                            print("GL1A: Encrypted: ", encrypted_message_bytes)
+                            print("GL1A: avg lab 3 grade: ", avg_lab3_grade)
+                            break
+                        elif command_id == "GL4A":
+                            # get lab 4 average of class (col 7)
+                            for row in data[1:]: #skipping header row
+                                sum_grades += float(row[6])
+                                num_grades += 1
+                            avg_lab4_grade = sum_grades / num_grades
+                            encrypted_message_bytes = encrypt(str(avg_lab4_grade), encrypt_key)
+                            print("GL1A: Encrypted: ", encrypted_message_bytes)
+                            print("GL1A: avg lab 4 grade: ", avg_lab4_grade)
+                            break                       
+                        elif command_id == "GEA":
+                            # get exam average of class (col 9-12)
+                            for row in data[1:]: #skipping header row
+                                sum_grades += float(row[8]) + float(row[9]) + float(row[10]) + float(row[11])  
+                                num_grades += 4
+                            avg_exam_grade = sum_grades / num_grades
+                            encrypted_message_bytes = encrypt(str(avg_exam_grade), encrypt_key)
+                            print("GEA: Encrypted: ", encrypted_message_bytes)
+                            print("GEA: avg exam grade: ", avg_exam_grade)
+                            break                         
                         elif command_id == "GG":
-                            # get all grades of studens as a list col 3 - 12
+                            # get all grades of students as a list col 4 - 12
                             grades = []
                             grades.append(row[3:12])
                             encrypted_message_bytes = encrypt(str(grades), encrypt_key)
                             print("GG: Encrypted: ", encrypted_message_bytes)
                             print("GG: grades: ", grades)
-                            break
+                            break                       
                         else:
                             print("Command ID not found")
                             break
