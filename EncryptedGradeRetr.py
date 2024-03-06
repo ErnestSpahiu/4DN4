@@ -156,7 +156,7 @@ class Server:
                 #get the student id and the key from the rcvd client 
                 student_id, command_id = recvd_str.split(',')
                 print("Student ID: ", student_id)
-                print("Command ID: ", command_id)
+                print("Recieved Command ID: ", command_id)
                 
                 # ==== New Decryption Code ====
                 #load data from csv file
@@ -169,11 +169,10 @@ class Server:
                 
                 #now check if the student id (2) is in the csv file
                 #if it is, then get the key (3)
-                #we want to check each row in the csv file so tranpose data
+                #print given student id and id 1 from csv
+                print("User found, student ID: ", student_id)
+
                 for row in data:
-                    #print given student id and id 1 from csv
-                    print("Student ID: ", student_id)
-                    print("ID in csv: ", row[1])
                     if ((row[1]) == int(student_id)):
                         encrypt_key = row[2]
                         
@@ -327,6 +326,18 @@ class Client:
         while True:
             self.input_text1 = input("Input Student ID: ")
             self.input_text2 = input("Input Command ID: ")
+            print("Command ID entered", self.input_text2)
+
+            if (self.input_text2 != "GG" and self.input_text2 != "GMA"
+                 and self.input_text2 != "GEA"):
+                print("Fetching Lab ", self.input_text2[-2], " average")
+            elif (self.input_text2 == "GG"):
+                print("Getting Grades")
+            elif (self.input_text2 == "GMA"): 
+                print("Fetching Midterm Average")
+            elif (self.input_text2 == "GEA"):
+                print("Fetching Exam Average")
+
             self.input_text_ALL = f'{self.input_text1},{self.input_text2}'
             if self.input_text1 != "":
                 break
