@@ -2,9 +2,9 @@
 
 """Group:20 Tae"
     Members:
-    1. Ernest Spahiu
+    1. Ernest Spahiu  400197077
     2. Bardia Sedighi 400186566
-    3. Stiv Berberi
+    3. Stiv Berberi   400212350
 
 """
 # Imports 
@@ -92,6 +92,7 @@ class Server:
                 reader = csv.reader(file)
                 #1st row defines meaning of columns
                 #entries 2 and 3 in rows are the student id and the key
+                print("Dara read from CSV file: \n")
                 for row in reader:
                     print(row)
 
