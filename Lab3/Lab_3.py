@@ -6,6 +6,7 @@ import socket
 import argparse
 import sys
 import threading
+import os
 
 ########################################################################
 
@@ -19,7 +20,7 @@ FILESIZE_FIELD_LEN       = 8 # 8 byte file size field.
 # be a 1-byte integer. For now, we only define the "GET" command,
 # which tells the server to send a file.
 
-CMD = {"GET" : 1}
+CMD = {"GET" : 1, "PUT" : 2, "LIST" : 3, "BYE" : 4}
 
 MSG_ENCODING = "utf-8"
 SOCKET_TIMEOUT = 4
@@ -93,6 +94,7 @@ class Server:
     REMOTE_FILE_NAME = "ocanada_greek.txt"
     # REMOTE_FILE_NAME = "ocanada_english.txt"
 
+    SERVER_DIR = "./serverDirectory/"
 
     def __init__(self):
         self.get_service_discovery_socket()
@@ -173,27 +175,27 @@ class Server:
         connection.setblocking(True)
         threadName = threading.current_thread().name
         print(threadName," - Connection received from",address_port)
-        # Read the command and see if it is a GET command.
-        status, cmd_field = recv_bytes(connection, CMD_FIELD_LEN)
-        # If the read fails, give up.
-        if not status:
-            print("Closing connection ...")
-            connection.close()
-            return
-        # Convert the command to our native byte order.
-        cmd = int.from_bytes(cmd_field, byteorder='big')
-        # Give up if we don't get a GET command.
+
         while True:
-            recvd_bytes = connection.recv(1024).decode('utf-8')
-            if len(recvd_bytes) == 0:
-                print(threadName," - Closing client connection ... ")
-                connection.close()
-                break
-            #if cmd == CMD["GET"]:
-             #   self.getFile(client)
+            status, cmd_field = recv_bytes(connection, CMD_FIELD_LEN)
+            cmd = int.from_bytes(cmd_field, byteorder='big')
+
+            if cmd == CMD["LIST"]:
+                print("Server: Recieved RLIST CMD")
+                server_list = os.listdir(Server.SERVER_DIR)
+                list_item = ""
+                for item in server_list:
+                    list_item += item + "\n"
+
+                list_item = list_item.encode(Server.MSG_ENCODING)
+                list_size = len(list_item)
+                list_sizeBytes = list_size.to_bytes(FILESIZE_FIELD_LEN, byteorder='big')
+                connection.sendall(list_sizeBytes + list_item)
             
-
-
+            if not status:
+                print("Closing connection ...")            
+                connection.close()
+                return
 
     def getFile(self, client):
         connection, address = client
@@ -289,6 +291,8 @@ class Client:
     SCAN_CMD = "SCAN"
     SCAN_CMD_ENCODED = SCAN_CMD.encode(MSG_ENCODING)
 
+    SERVER_DIR = "./serverDirectory/"
+    CLIENT_DIR = "./clientDirectory/"
 
     # Define the local file name where the downloaded file will be
     # saved.
@@ -354,12 +358,14 @@ class Client:
                             print(msg)
                             exit()
                     elif connect_prompt_cmd =='llist':
-                        # Do a sendall and ask the FS for a remote file listing.
-                        # Do a recv and output the response when it returns.
+                        # read the local directory and list the files
+                        print("Local directory listing:")
+                        print(os.listdir(Client.CLIENT_DIR))
                         pass
                     elif connect_prompt_cmd =='rlist':
                         # Do a sendall and ask the FS for a remote file listing.
                         # Do a recv and output the response when it returns.
+                        self.get_remote_list()
                         pass
                     elif connect_prompt_cmd =='rlist':
                         # Do a sendall and ask the FS for a remote file listing.
@@ -435,8 +441,21 @@ class Client:
             # Connect to the server using its socket address tuple.
             self.fs_socket.connect((hostname, port))
             print("Connected to \"{}\" on port {}".format(hostname, port))
-        
+    
+    def get_remote_list(self):
+        #Convert the command to native byte order.
+        cmd_field = CMD["LIST"].to_bytes(CMD_FIELD_LEN, byteorder='big')
 
+        #Send the command
+        self.fs_socket.sendall(cmd_field)
+
+        #Get size as int
+        list_sizeBytes = self.fs_socket.recv(FILESIZE_FIELD_LEN)
+        list_size = int.from_bytes(list_sizeBytes, byteorder='big')
+
+        #Get the list
+        list = self.fs_socket.recv(list_size).decode(MSG_ENCODING)
+        print(list)
 
     def get_file(self):
         ################################################################
@@ -480,7 +499,7 @@ class Client:
         file_size = int.from_bytes(file_size_bytes, byteorder='big')
         print("File size = ", file_size)
 
-        # self.socket.settimeout(4)                                  
+        #self.socket.settimeout(4)                                  
         status, recvd_bytes_total = recv_bytes(self.fs_socket, file_size)
         if not status:
             print("Closing connection ...")            
