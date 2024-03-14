@@ -175,11 +175,25 @@ class Server:
         connection.setblocking(True)
         threadName = threading.current_thread().name
         print(threadName," - Connection received from",address_port)
-
         while True:
-            status, cmd_field = recv_bytes(connection, CMD_FIELD_LEN)
-            cmd = int.from_bytes(cmd_field, byteorder='big')
+            # Receive bytes over the TCP connection. This will block
+            # until "at least 1 byte or more" is available.
+            recvd_bytes = connection.recv(1)
+                        
+            # If recv returns with zero bytes, the other end of the
+            # TCP connection has closed (The other end is probably in
+            # FIN WAIT 2 and we are in CLOSE WAIT.). If so, close the
+            # server end of the connection and get the next client
+            # connection.
+            if len(recvd_bytes) == 0:
+                print("Closing {} client connection ... ".format(address_port))
+                connection.close()
+                # Break will exit the connection_handler and cause the
+                # thread to finish.
+                break
 
+            cmd = int.from_bytes(recvd_bytes, byteorder='big')
+            print(cmd)
             if cmd == CMD["LIST"]:
                 print("Server: Recieved RLIST CMD")
                 server_list = os.listdir(Server.SERVER_DIR)
@@ -191,11 +205,10 @@ class Server:
                 list_size = len(list_item)
                 list_sizeBytes = list_size.to_bytes(FILESIZE_FIELD_LEN, byteorder='big')
                 connection.sendall(list_sizeBytes + list_item)
-            
-            if not status:
-                print("Closing connection ...")            
-                connection.close()
-                return
+            if cmd == CMD["GET"]:
+                print("Server: Recieved GET CMD")
+                self.getFile(client)
+
 
     def getFile(self, client):
         connection, address = client
@@ -258,9 +271,6 @@ class Server:
             # If the client has closed the connection, close the
             # socket on this end.
             print("Closing client connection ...")
-            connection.close()
-            return
-        finally:
             connection.close()
             return
 
@@ -457,7 +467,7 @@ class Client:
         list = self.fs_socket.recv(list_size).decode(MSG_ENCODING)
         print(list)
 
-    def get_file(self):
+    def get_file(self, filename=Server.REMOTE_FILE_NAME):
         ################################################################
         # Generate a file transfer request to the server
         
@@ -465,7 +475,7 @@ class Client:
         cmd_field = CMD["GET"].to_bytes(CMD_FIELD_LEN, byteorder='big')
 
         # Create the packet filename field.
-        filename_field_bytes = Server.REMOTE_FILE_NAME.encode(MSG_ENCODING)
+        filename_field_bytes = filename.encode(MSG_ENCODING)
 
         # Create the packet filename size field.
         filename_size_field = len(filename_field_bytes).to_bytes(FILENAME_SIZE_FIELD_LEN, byteorder='big')
