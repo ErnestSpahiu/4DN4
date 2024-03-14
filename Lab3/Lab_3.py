@@ -97,8 +97,9 @@ class Server:
     SERVER_DIR = "./serverDirectory/"
 
     def __init__(self):
+        self.showDir()        
         self.get_service_discovery_socket()
-        self.get_file_sharing_socket()        
+        self.get_file_sharing_socket()
         self.receive_forever()
 
     def get_service_discovery_socket(self):
@@ -196,19 +197,29 @@ class Server:
             print(cmd)
             if cmd == CMD["LIST"]:
                 print("Server: Recieved RLIST CMD")
-                server_list = os.listdir(Server.SERVER_DIR)
-                list_item = ""
-                for item in server_list:
-                    list_item += item + "\n"
-
-                list_item = list_item.encode(Server.MSG_ENCODING)
-                list_size = len(list_item)
-                list_sizeBytes = list_size.to_bytes(FILESIZE_FIELD_LEN, byteorder='big')
-                connection.sendall(list_sizeBytes + list_item)
+                self.rlist(client)
             if cmd == CMD["GET"]:
                 print("Server: Recieved GET CMD")
                 self.getFile(client)
 
+    def showDir(self):
+        server_list = os.listdir(Server.SERVER_DIR)
+        list_item = ""
+        for item in server_list:
+            list_item += item + "\n"
+        print(list_item)
+
+    def rlist(self,client):
+        connection, address = client
+        server_list = os.listdir(Server.SERVER_DIR)
+        list_item = ""
+        for item in server_list:
+            list_item += item + "\n"
+
+        list_item = list_item.encode(Server.MSG_ENCODING)
+        list_size = len(list_item)
+        list_sizeBytes = list_size.to_bytes(FILESIZE_FIELD_LEN, byteorder='big')
+        connection.sendall(list_sizeBytes + list_item)
 
     def getFile(self, client):
         connection, address = client
