@@ -100,7 +100,7 @@ class Server:
     # This is the file that the client will request using a GET.
     # REMOTE_FILE_NAME = "greek.txt"
     # REMOTE_FILE_NAME = "twochars.txt"
-    REMOTE_FILE_NAME = "ocanada_greek.txt"
+    REMOTE_FILE_NAME = "ocanada_grk.txt"
     # REMOTE_FILE_NAME = "ocanada_english.txt"
 
     def __init__(self):
