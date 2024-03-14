@@ -246,7 +246,7 @@ class Server:
         # If we can't find the requested file, shutdown the connection
         # and wait for someone else.
         try:
-            file = open(filename, 'r').read()
+            file = open(Client.SERVER_DIR + '/' + filename, 'r').read()
         except FileNotFoundError:
             print(Server.FILE_NOT_FOUND_MSG)
             connection.close()                   
@@ -306,7 +306,6 @@ class Client:
 
     # Define the local file name where the downloaded file will be
     # saved.
-    DOWNLOADED_FILE_NAME = "filedownload.txt"
 
 
     def __init__(self):
@@ -521,9 +520,9 @@ class Client:
             # Create a file using the received filename and store the
             # data.
             print("Received {} bytes. Creating file: {}" \
-                  .format(len(recvd_bytes_total), Client.DOWNLOADED_FILE_NAME))
+                  .format(len(recvd_bytes_total), filename))
 
-            with open(Client.DOWNLOADED_FILE_NAME, 'w') as f:
+            with open(Client.CLIENT_DIR + '/' + filename, 'w') as f:
                 recvd_file = recvd_bytes_total.decode(MSG_ENCODING)
                 f.write(recvd_file)
             print(recvd_file)
