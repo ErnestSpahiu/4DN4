@@ -142,6 +142,7 @@ class Server:
                 # off to the connection handler with a new execution
                 # thread.
                 client = self.fs_socket.accept()
+                connection, address_port = client
                 threading.Thread(target=self.connection_handler, args=(client,)).start()
         except Exception as msg:
             print(msg)
@@ -150,6 +151,8 @@ class Server:
         finally:
             # If something bad happens, make sure that we close the
             # socket.
+            print("Closing {} client connection ... ".format(address_port))     
+            connection.close()
             self.fs_socket.close()
             sys.exit(1)
     
@@ -426,7 +429,6 @@ class Client:
             # If we get and error or keyboard interrupt, make sure
             # that we close the socket.
             self.fs_socket.close()
-            self.sd_socket.close()
             sys.exit(1)
                 
 
