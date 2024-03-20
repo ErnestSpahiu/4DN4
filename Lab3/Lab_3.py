@@ -208,7 +208,11 @@ class Server:
                     break
             if cmd == CMD["PUT"]:
                 print("Server: Recieved PUT CMD")
-
+                error = self.putFile(client)
+                if(error == 'close'):
+                    print("Closing {} client connection ... ".format(address_port))           
+                    connection.close()
+                    break
 
 
     def showDir(self):
@@ -289,6 +293,57 @@ class Server:
     def putFile(self, client):
         connection, address = client
 
+        # Filename size
+        status, filename_size_field = recv_bytes(connection, FILENAME_SIZE_FIELD_LEN)
+        if not status:
+            return 'close'
+        filename_size_bytes = int.from_bytes(filename_size_field, byteorder='big')
+        if not filename_size_bytes:
+            return 'close'
+        print('Filename size (bytes) = ', filename_size_bytes)
+
+        # Filename
+        status, filename_bytes = recv_bytes(connection, filename_size_bytes)
+        if not status:
+            return 'close'
+        if not filename_bytes:
+            print("Connection is closed!")
+            return 'close'
+        filename = filename_bytes.decode(MSG_ENCODING)
+        print('Filename to create = ', filename)
+
+        # Filesize
+        status, file_size_field = recv_bytes(connection, FILESIZE_FIELD_LEN)
+        if not status:
+            print("Closing connection ...")            
+            connection.close()
+            return
+        if len(file_size_bytes) == 0:
+            connection.close()
+            return
+        file_size = int.from_bytes(file_size_bytes, byteorder='big')
+        print("File size = ", file_size)
+
+        # self.socket.settimeout(4)                                  
+        status, recvd_bytes_total = recv_bytes(connection, file_size)
+        if not status:
+            print("Closing connection ...")            
+            connection.close()
+            return
+        # Receive the file itself.
+        try:
+            # Create a file using the received filename and store the
+            # data.
+            print("Received {} bytes. Creating file: {}" \
+                  .format(len(recvd_bytes_total), Client.DOWNLOADED_FILE_NAME))
+
+            with open(Client.DOWNLOADED_FILE_NAME, 'w') as f:
+                recvd_file = recvd_bytes_total.decode(MSG_ENCODING)
+                f.write(recvd_file)
+            print(recvd_file)
+        except KeyboardInterrupt:
+            print()
+            exit(1)
 
 ########################################################################
 # Service Discovery Client
