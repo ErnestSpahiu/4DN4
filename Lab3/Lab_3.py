@@ -206,6 +206,9 @@ class Server:
                     print("Closing {} client connection ... ".format(address_port))           
                     connection.close()
                     break
+            if cmd == CMD["PUT"]:
+                print("Server: Recieved PUT CMD")
+
 
 
     def showDir(self):
@@ -283,6 +286,10 @@ class Server:
             print("Closing client connection ...")
             return 'close'
 
+    def putFile(self, client):
+        connection, address = client
+
+
 ########################################################################
 # Service Discovery Client
 #
@@ -354,33 +361,33 @@ class Client:
             while True:
                 # We are connected to the FS. Prompt the user for what to
                 # do.
-                connect_prompt_input = input("Please enter one of the following commands (scan, Connect <IP address> <port>, llist, rlist, put, get, bye: ")
-                if connect_prompt_input:
+                client_prompt_input = input("Please enter one of the following commands (scan, connect <IP address> <port>, llist, rlist, put <filename>, get, bye: ")
+                if client_prompt_input:
                 # If the user enters something, process it.
                     try:
                         # Parse the input into a command and its
                         # arguments.
-                        connect_prompt_cmd, *connect_prompt_args = connect_prompt_input.split()
+                        client_prompt_cmd, *client_prompt_args = client_prompt_input.split()
                     except Exception as msg:
                         print(msg)
                         continue
-                    if connect_prompt_cmd =='scan':
+                    if client_prompt_cmd =='scan':
                         self.scan_for_service()
-                    elif connect_prompt_cmd =='connect':
+                    elif client_prompt_cmd =='connect':
                         try:
-                            if(len(connect_prompt_args) == 2):
-                                self.connect_to_server(connect_prompt_args[0], int(connect_prompt_args[1]))
+                            if(len(client_prompt_args) == 2):
+                                self.connect_to_server(client_prompt_args[0], int(client_prompt_args[1]))
                             else:
                                 self.connect_to_server()
                         except Exception as msg:
                             print(msg)
                             exit()
-                    elif connect_prompt_cmd =='llist':
+                    elif client_prompt_cmd =='llist':
                         # read the local directory and list the files
                         print("Local directory listing:")
                         print(os.listdir(Client.CLIENT_DIR))
                         pass
-                    elif connect_prompt_cmd =='rlist':
+                    elif client_prompt_cmd =='rlist':
                         try:
                             # Do a sendall and ask the FS for a remote file listing.
                             # Do a recv and output the response when it returns.
@@ -392,7 +399,7 @@ class Client:
                             else:
                                 print(e)
                                 exit()
-                    elif connect_prompt_cmd =='put':
+                    elif client_prompt_cmd =='put':
                         try:
                             pass
                         except IOError as e: 
@@ -402,10 +409,10 @@ class Client:
                             else:
                                 print(e)
                                 exit()
-                    elif connect_prompt_cmd =='get':
+                    elif client_prompt_cmd =='get':
                         try:
-                            if(len(connect_prompt_args)==1):
-                                self.get_file(connect_prompt_args[0])
+                            if(len(client_prompt_args)==1):
+                                self.get_file(client_prompt_args[0])
                             else:
                                 self.get_file()
                         except IOError as e: 
@@ -416,7 +423,7 @@ class Client:
                                 print(e)
                                 exit()
                         
-                    elif connect_prompt_cmd =='bye':
+                    elif client_prompt_cmd =='bye':
                         # Disconnect from the FS.
                         self.fs_socket.close()
                         break
@@ -552,6 +559,69 @@ class Client:
             exit(1)
             
             
+    def put_file(self, filename=Server.REMOTE_FILE_NAME):
+        ################################################################
+        # Generate a file transfer request to the server
+        
+        # Create the packet cmd field.
+        cmd_field = CMD["PUT"].to_bytes(CMD_FIELD_LEN, byteorder='big')
+
+        # Create the packet filename field.
+        filename_field_bytes = filename.encode(MSG_ENCODING)
+
+        # Create the packet filename size field.
+        filename_size_field = len(filename_field_bytes).to_bytes(FILENAME_SIZE_FIELD_LEN, byteorder='big')
+
+        # Create the packet.
+        print("CMD field: ", cmd_field.hex())
+        print("Filename_size_field: ", filename_size_field.hex())
+        print("Filename field: ", filename_field_bytes.hex())
+        
+        pkt = cmd_field + filename_size_field + filename_field_bytes
+
+        # Send the request packet to the server.
+        self.fs_socket.sendall(pkt)
+
+        ################################################################
+        # Process the file transfer repsonse from the server
+        
+        # Read the file size field returned by the server.
+        status, file_size_bytes = recv_bytes(self.fs_socket, FILESIZE_FIELD_LEN)
+        if not status:
+            print("Closing connection ...")            
+            self.fs_socket.close()
+            return
+
+        print("File size bytes = ", file_size_bytes.hex())
+        if len(file_size_bytes) == 0:
+            self.fs_socket.close()
+            return
+
+        # Make sure that you interpret it in host byte order.
+        file_size = int.from_bytes(file_size_bytes, byteorder='big')
+        print("File size = ", file_size)
+
+        #self.socket.settimeout(4)                                  
+        status, recvd_bytes_total = recv_bytes(self.fs_socket, file_size)
+        if not status:
+            print("Closing connection ...")            
+            self.fs_socket.close()
+            return
+        # print("recvd_bytes_total = ", recvd_bytes_total)
+        # Receive the file itself.
+        try:
+            # Create a file using the received filename and store the
+            # data.
+            print("Received {} bytes. Creating file: {}" \
+                  .format(len(recvd_bytes_total), filename))
+
+            with open(Client.CLIENT_DIR + '/' + filename, 'w') as f:
+                recvd_file = recvd_bytes_total.decode(MSG_ENCODING)
+                f.write(recvd_file)
+            print(recvd_file)
+        except KeyboardInterrupt:
+            print()
+            exit(1)
                 
 ########################################################################
 # Fire up a client/server if run directly.
