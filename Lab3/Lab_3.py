@@ -199,14 +199,26 @@ class Server:
             if cmd == CMD["LIST"]:
                 print("Server: Recieved RLIST CMD")
                 self.rlist(client)
-            if cmd == CMD["GET"]:
+            elif cmd == CMD("PUT"):
+                print("Server: Recieved PUT CMD")
+                error = self.putFile(client)
+                if(error == 'close'):
+                     print("Closing {} client connection ... ".format(address_port))           
+                     connection.close()
+                     break
+            elif cmd == CMD["GET"]:
                 print("Server: Recieved GET CMD")
                 error = self.getFile(client)
                 if(error == 'close'):
                     print("Closing {} client connection ... ".format(address_port))           
                     connection.close()
                     break
-
+            elif cmd == CMD["BYE"]:
+                print("Connection closed by client")
+                connection.close()
+                break
+            else:
+                print("Invalid command entered")
 
     def showDir(self):
         server_list = os.listdir(Server.SERVER_DIR)
@@ -283,6 +295,65 @@ class Server:
             print("Closing client connection ...")
             return 'close'
 
+    def PutFile(self, client):
+        connection, address = client
+        # Filename size
+        status, filename_size_field = recv_bytes(connection, FILENAME_SIZE_FIELD_LEN)
+        if not status:
+            return 'close'
+        filename_size_bytes = int.from_bytes(filename_size_field, byteorder='big')
+        if not filename_size_bytes:
+            return 'close'
+        print('Filename size (bytes) = ', filename_size_bytes)
+        ###
+        # Filename
+        status, filename_bytes = recv_bytes(connection, filename_size_bytes)
+        if not status:
+            return 'close'
+        if not filename_bytes:
+            print("Connection is closed!")
+            return 'close'
+        filename = filename_bytes.decode(MSG_ENCODING)
+        print('Filename to push = ', filename)
+
+         # Filesize
+        status, file_size_bytes = recv_bytes(connection, FILESIZE_FIELD_LEN)
+        if not status:
+            print("Closing connection ...")            
+            connection.close()
+            return
+        # if len(file_size_bytes) == 0:
+        #     connection.close()
+        #     return
+        file_size_bytes = int.from_bytes(file_size_bytes, byteorder='big')
+        print("File size = ", file_size_bytes)
+        if not file_size_bytes:
+            print("Connection is closed!")
+            return 'close'
+
+         # self.socket.settimeout(4)                                  
+        status, recvd_bytes_total = recv_bytes(connection, file_size_bytes)
+        if not status:
+            print("Closing connection ...")            
+            connection.close()
+            return
+        if not recvd_bytes_total:
+            print("Connection is closed!")
+            return 'close'
+         # Receive the file itself.
+        try:
+            # Create a file using the received filename and store the data.
+            print("Received {} bytes. Creating file: {}" \
+                .format(len(recvd_bytes_total), Client.DOWNLOADED_FILE_NAME))
+
+            with open(Client.DOWNLOADED_FILE_NAME, 'w') as f:
+                recvd_file = recvd_bytes_total.decode(MSG_ENCODING)
+                f.write(recvd_file)
+            print(recvd_file)
+        except KeyboardInterrupt:
+            print()
+            exit(1)
+
 ########################################################################
 # Service Discovery Client
 #
@@ -352,35 +423,34 @@ class Client:
         
         try:
             while True:
-                # We are connected to the FS. Prompt the user for what to
-                # do.
-                connect_prompt_input = input("Please enter one of the following commands (scan, Connect <IP address> <port>, llist, rlist, put, get, bye: ")
-                if connect_prompt_input:
+                # We are connected to the FS. Prompt the user for what to do.
+                client_prompt_input = input("Please enter one of the following commands (scan, connect <IP address> <port>, llist, rlist, put <filename>, get, bye: ")
+                if client_prompt_input:
                 # If the user enters something, process it.
                     try:
                         # Parse the input into a command and its
                         # arguments.
-                        connect_prompt_cmd, *connect_prompt_args = connect_prompt_input.split()
+                        client_prompt_cmd, *client_prompt_args = client_prompt_input.split()
                     except Exception as msg:
                         print(msg)
                         continue
-                    if connect_prompt_cmd =='scan':
+                    if client_prompt_cmd =='scan':
                         self.scan_for_service()
-                    elif connect_prompt_cmd =='connect':
+                    elif client_prompt_cmd =='connect':
                         try:
-                            if(len(connect_prompt_args) == 2):
-                                self.connect_to_server(connect_prompt_args[0], int(connect_prompt_args[1]))
+                            if(len(client_prompt_args) == 2):
+                                self.connect_to_server(client_prompt_args[0], int(client_prompt_args[1]))
                             else:
                                 self.connect_to_server()
                         except Exception as msg:
                             print(msg)
                             exit()
-                    elif connect_prompt_cmd =='llist':
+                    elif client_prompt_cmd =='llist':
                         # read the local directory and list the files
                         print("Local directory listing:")
                         print(os.listdir(Client.CLIENT_DIR))
                         pass
-                    elif connect_prompt_cmd =='rlist':
+                    elif client_prompt_cmd =='rlist':
                         try:
                             # Do a sendall and ask the FS for a remote file listing.
                             # Do a recv and output the response when it returns.
@@ -392,9 +462,13 @@ class Client:
                             else:
                                 print(e)
                                 exit()
-                    elif connect_prompt_cmd =='put':
+                    elif client_prompt_cmd =='put':
                         try:
-                            pass
+                            if (len(client_prompt_args) == 1):
+                                filename = client_prompt_args[0]
+                                self.put_file(filename)
+                            else:
+                                print("No <filename> passed in")
                         except IOError as e: 
                             if e.errno == errno.EPIPE:
                                 print("No connection to server")
@@ -402,10 +476,10 @@ class Client:
                             else:
                                 print(e)
                                 exit()
-                    elif connect_prompt_cmd =='get':
+                    elif client_prompt_cmd =='get':
                         try:
-                            if(len(connect_prompt_args)==1):
-                                self.get_file(connect_prompt_args[0])
+                            if(len(client_prompt_args)==1):
+                                self.get_file(client_prompt_args[0])
                             else:
                                 self.get_file()
                         except IOError as e: 
@@ -416,7 +490,7 @@ class Client:
                                 print(e)
                                 exit()
                         
-                    elif connect_prompt_cmd =='bye':
+                    elif client_prompt_cmd =='bye':
                         # Disconnect from the FS.
                         self.fs_socket.close()
                         break
@@ -550,7 +624,42 @@ class Client:
         except KeyboardInterrupt:
             print()
             exit(1)
-            
+
+    def put_file(self, filename):
+         ################################################################
+         # Generate a file transfer request to the server
+        try:
+            file = open(filename, 'r').read()
+        except FileNotFoundError:
+            print("Client: requested file is not found! Closing connection")
+            self.fs_socket.close()
+            return 
+
+        cmd_field = CMD["PUT"].to_bytes(CMD_FIELD_LEN, byteorder='big')
+        filename_field_bytes = filename.encode(MSG_ENCODING)
+        filename_size_field = len(filename_field_bytes).to_bytes(FILENAME_SIZE_FIELD_LEN, byteorder='big')
+        # Encode the file contents into bytes, record its size and
+        # generate the file size field used for transmission.
+        file_bytes = file.encode(MSG_ENCODING)
+        file_size_field = len(file_bytes).to_bytes(FILESIZE_FIELD_LEN, byteorder='big')
+
+        # Create the packet.
+        pkt = cmd_field + filename_size_field + filename_field_bytes + file_size_field + file_bytes
+
+        # Send the request packet to the server.
+        try:
+
+            print("CMD field: ", cmd_field.hex())
+            print("Filename_size_field: ", filename_size_field.hex())
+            print("Filename field: ", filename_field_bytes.hex())
+            print("File_size field: ", file_size_field.hex())
+            print("File field: ", file_bytes.hex())
+            self.fs_socket.sendall(pkt)
+
+        except socket.error:
+            print("Encountered send error, closing client connection...")
+            self.fs_socket.close()
+            return        
             
                 
 ########################################################################
