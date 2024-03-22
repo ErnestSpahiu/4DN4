@@ -330,6 +330,7 @@ class Server:
             print("Closing connection ...")            
             connection.close()
             return
+
         # Receive the file itself.
         try:
             # Create a file using the received filename and store the
@@ -344,6 +345,8 @@ class Server:
         except KeyboardInterrupt:
             print()
             exit(1)
+        except IOError:
+            print("Could not download file.")
 
 ########################################################################
 # Service Discovery Client
@@ -416,7 +419,7 @@ class Client:
             while True:
                 # We are connected to the FS. Prompt the user for what to
                 # do.
-                client_prompt_input = input("Please enter one of the following commands (scan, connect <IP address> <port>, llist, rlist, put <filename>, get, bye: ")
+                client_prompt_input = input("Please enter one of the following commands (scan, connect <IP address> <port>, llist, rlist, put <filename>, get <filename>, bye: ")
                 if client_prompt_input:
                 # If the user enters something, process it.
                     try:
@@ -647,7 +650,6 @@ class Client:
             print("Filename_size_field: ", filename_size_field.hex())
             print("Filename field: ", filename_field_bytes.hex())
             print("File_size field: ", file_size_field.hex())
-            print("File field: ", file_bytes.hex())
             self.fs_socket.sendall(pkt)
 
         except socket.error:
