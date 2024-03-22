@@ -313,7 +313,7 @@ class Server:
         print('Filename to create = ', filename)
 
         # Filesize
-        status, file_size_field = recv_bytes(connection, FILESIZE_FIELD_LEN)
+        status, file_size_bytes = recv_bytes(connection, FILESIZE_FIELD_LEN)
         if not status:
             print("Closing connection ...")            
             connection.close()
@@ -335,9 +335,9 @@ class Server:
             # Create a file using the received filename and store the
             # data.
             print("Received {} bytes. Creating file: {}" \
-                  .format(len(recvd_bytes_total), Client.DOWNLOADED_FILE_NAME))
+                  .format(len(recvd_bytes_total), filename))
 
-            with open(Client.DOWNLOADED_FILE_NAME, 'w') as f:
+            with open(f'serverDirectory/{filename}', 'w') as f:
                 recvd_file = recvd_bytes_total.decode(MSG_ENCODING)
                 f.write(recvd_file)
             print(recvd_file)
