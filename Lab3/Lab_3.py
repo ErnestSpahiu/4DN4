@@ -199,7 +199,14 @@ class Server:
             if cmd == CMD["LIST"]:
                 print("Server: Recieved RLIST CMD")
                 self.rlist(client)
-            if cmd == CMD["GET"]:
+            elif cmd == CMD("PUT"):
+                print("Server: Recieved PUT CMD")
+                error = self.putFile(client)
+                if(error == 'close'):
+                     print("Closing {} client connection ... ".format(address_port))           
+                     connection.close()
+                     break
+            elif cmd == CMD["GET"]:
                 print("Server: Recieved GET CMD")
                 error = self.getFile(client)
                 if(error == 'close'):
@@ -617,7 +624,42 @@ class Client:
         except KeyboardInterrupt:
             print()
             exit(1)
-            
+
+    def put_file(self, filename):
+         ################################################################
+         # Generate a file transfer request to the server
+        try:
+            file = open(filename, 'r').read()
+        except FileNotFoundError:
+            print("Client: requested file is not found! Closing connection")
+            self.fs_socket.close()
+            return 
+
+        cmd_field = CMD["PUT"].to_bytes(CMD_FIELD_LEN, byteorder='big')
+        filename_field_bytes = filename.encode(MSG_ENCODING)
+        filename_size_field = len(filename_field_bytes).to_bytes(FILENAME_SIZE_FIELD_LEN, byteorder='big')
+        # Encode the file contents into bytes, record its size and
+        # generate the file size field used for transmission.
+        file_bytes = file.encode(MSG_ENCODING)
+        file_size_field = len(file_bytes).to_bytes(FILESIZE_FIELD_LEN, byteorder='big')
+
+        # Create the packet.
+        pkt = cmd_field + filename_size_field + filename_field_bytes + file_size_field + file_bytes
+
+        # Send the request packet to the server.
+        try:
+
+            print("CMD field: ", cmd_field.hex())
+            print("Filename_size_field: ", filename_size_field.hex())
+            print("Filename field: ", filename_field_bytes.hex())
+            print("File_size field: ", file_size_field.hex())
+            print("File field: ", file_bytes.hex())
+            self.fs_socket.sendall(pkt)
+
+        except socket.error:
+            print("Encountered send error, closing client connection...")
+            self.fs_socket.close()
+            return        
             
     def put_file(self, filename):
         ################################################################
