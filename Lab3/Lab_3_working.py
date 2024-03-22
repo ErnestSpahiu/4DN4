@@ -623,7 +623,7 @@ class Client:
         ################################################################
         # Generate a file transfer request to the server
         try:
-            file = open(filename, 'r').read()
+            file = open(Client.CLIENT_DIR + '/' + filename, 'r').read()
         except FileNotFoundError:
             print("Client: requested file is not found! Closing connection")
             self.fs_socket.close()
