@@ -4,7 +4,8 @@
 
 import socket
 import argparse
-import sys, errno
+import sys
+import errno
 import threading
 import os
 
@@ -13,6 +14,7 @@ import os
 ########################################################################
 # recv_bytes frontend to recv
 ########################################################################
+
 
 CMD_FIELD_LEN            = 1 # 1 byte commands sent from the client.
 CHATNAME_SIZE_FIELD_LEN  = 1 # 1 byte Chat name size field.
@@ -71,11 +73,12 @@ class ChatRoom:
 # 
 ########################################################################
 
+
 class Server:
     HOSTNAME = "127.0.0.1"
     CHAT_ROOM_DIRECTORY_PORT = 50000
 
-    MSG_ENCODING = "utf-8" 
+    MSG_ENCODING = "utf-8"
 
     RECV_SIZE = 1024
     BACKLOG = 10
@@ -85,26 +88,27 @@ class Server:
         self.get_socket()
         self.receive_forever()
 
-
     def get_socket(self):
         try:
             # Create the TCP server listen socket in the usual way.
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.socket.bind((Server.HOSTNAME, Server.CHAT_ROOM_DIRECTORY_PORT))
+            self.socket.bind(
+                (Server.HOSTNAME, Server.CHAT_ROOM_DIRECTORY_PORT))
             self.socket.listen(Server.BACKLOG)
-            print("Chat Room Directory Server listening on port <port number> {} ...".format(Server.CHAT_ROOM_DIRECTORY_PORT))
+            print("Chat Room Directory Server listening on port <port number> {} ...".format(
+                Server.CHAT_ROOM_DIRECTORY_PORT))
         except Exception as msg:
             print(msg)
             exit()
-
 
     def receive_forever(self):
         try:
             while True:
                 client = self.socket.accept()
                 connection, address_port = client
-                threading.Thread(target=self.connection_handler, args=(client,)).start()
+                threading.Thread(target=self.connection_handler,
+                                 args=(client,)).start()
         except Exception as msg:
             print(msg)
         except KeyboardInterrupt:
@@ -114,7 +118,6 @@ class Server:
             connection.close()
             self.socket.close()
             sys.exit(1)
-
 
     def connection_handler(self, client):
         connection, address_port = client
@@ -170,47 +173,47 @@ class Server:
 
 
 
-        status, chatname_size_field = recv_bytes(connection, CHATNAME_SIZE_FIELD_LEN)
+        status, addr_size_field = recv_bytes(connection, ADDR_SIZE_FIELD_LEN)
         if not status:
             return 'close'
-        chatname_size_bytes = int.from_bytes(chatname_size_field, byteorder='big')
-        if not chatname_size_bytes:
+        addr_size_bytes = int.from_bytes(addr_size_field, byteorder='big')
+        if not addr_size_bytes:
             return 'close'
 
-        # Now read and decode the requested chatname.
-        status, chatname_bytes = recv_bytes(connection, chatname_size_bytes)
+        # Now read and decode the requested addr.
+        status, addr_bytes = recv_bytes(connection, addr_size_bytes)
         if not status:
             return 'close'
-        if not chatname_bytes:
+        if not addr_bytes:
             print("Connection is closed!")
             return 'close'
 
-        chatname = chatname_bytes.decode(MSG_ENCODING)
-        print('Requested chatname = ', chatname)
+        addr = addr_bytes.decode(MSG_ENCODING)
+        print('Requested addr = ', addr)
 
 
 
-        status, chatname_size_field = recv_bytes(connection, CHATNAME_SIZE_FIELD_LEN)
+        status, port_size_field = recv_bytes(connection, PORT_SIZE_FIELD_LEN)
         if not status:
             return 'close'
-        chatname_size_bytes = int.from_bytes(chatname_size_field, byteorder='big')
-        if not chatname_size_bytes:
+        port_size_bytes = int.from_bytes(port_size_field, byteorder='big')
+        if not port_size_bytes:
             return 'close'
 
-        # Now read and decode the requested chatname.
-        status, chatname_bytes = recv_bytes(connection, chatname_size_bytes)
+        # Now read and decode the requested port.
+        status, port_bytes = recv_bytes(connection, port_size_bytes)
         if not status:
             return 'close'
-        if not chatname_bytes:
+        if not port_bytes:
             print("Connection is closed!")
             return 'close'
 
-        chatname = chatname_bytes.decode(MSG_ENCODING)
-        print('Requested chatname = ', chatname)
+        port = port_bytes.decode(MSG_ENCODING)
+        print('Requested port = ', port)
     
-        new_chatroom = ChatRoom(name, address, port)
-        if all(new_chatroom[name] != obj[name] or new_chatroom["port"] != obj["port"] for obj in self.chatrooms.values()):
-            self.chatrooms[name] = ChatRoom(name, address, port)
+        new_chatroom = ChatRoom(chatname, addr, port)
+        if all(chatname != chat.name or port != chat.port for chat in self.chatrooms.items()):
+            self.chatrooms[chatname] = new_chatroom
         else:
             print("Chat room has same address and port as an existing room")
 
@@ -302,19 +305,19 @@ class Server:
 # to receive responses until a socket timeout occurs, indicating that
 # no more responses are available. This scan process is repeated a
 # fixed number of times. The discovered services are then output.
-# 
+#
 ########################################################################
 
 class Client:
 
     RECV_SIZE = 1024
-    MSG_ENCODING = "utf-8"    
+    MSG_ENCODING = "utf-8"
 
     def __init__(self):
-        self.get_socket()       
+        self.get_socket()
         self.prompt_user_forever()
+        self.name = ""
 
-    
     def get_socket(self):
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -322,16 +325,16 @@ class Client:
             print(msg)
             exit()
 
-
     def prompt_user_forever(self):
-        
+
         try:
             while True:
                 # We are connected to the FS. Prompt the user for what to
                 # do.
-                client_prompt_input = input("Please enter one of the following commands (connect, bye, name <chat name>, chat <chat room name>: ")
+                client_prompt_input = input(
+                    "Please enter one of the following commands (connect, bye, name <chat name>, chat <chat room name>: ")
                 if client_prompt_input:
-                # If the user enters something, process it.
+                    # If the user enters something, process it.
                     try:
                         # Parse the input into a command and its
                         # arguments.
@@ -339,7 +342,7 @@ class Client:
                     except Exception as msg:
                         print(msg)
                         continue
-                    if client_prompt_cmd =='connect':
+                    if client_prompt_cmd == 'connect':
                         try:
                             self.connect_to_server()
                         except Exception as msg:
@@ -353,25 +356,26 @@ class Client:
 
                     elif client_prompt_cmd =='name':
                         try:
-                            if (len(client_prompt_args) == 2):
-                                pass
+                            if (len(client_prompt_args) == 1):
+                                self.changeName(client_prompt_args[0])
                             else:
                                 print("No <chat name> passed in")
-
                         except Exception as msg:
                             print(msg)
                             exit()
-                    elif client_prompt_cmd =='chat':
+                    elif client_prompt_cmd == 'chat':
+                        print(len(client_prompt_args))
+                        print(f"args: {client_prompt_args}")
                         try:
-                            if (len(client_prompt_args) == 2):
-                                pass
+                            if (len(client_prompt_args) == 1):
+                                self.chat(client_prompt_args[0])
                             else:
                                 print("No <chat room name> passed in")
                         except Exception as msg:
                             print(msg)
                             exit()
                     else:
-                        pass       
+                        pass
 
         except (KeyboardInterrupt, EOFError):
             print()
@@ -382,9 +386,46 @@ class Client:
             sys.exit(1)
 
     def connect_to_server(self, hostname=Server.HOSTNAME, port=Server.CHAT_ROOM_DIRECTORY_PORT):
-            # Connect to the server using its socket address tuple.
-            self.socket.connect((hostname, port))
-            print("Connected to \"{}\" on port {}".format(hostname, port))
+        # Connect to the server using its socket address tuple.
+        self.socket.connect((hostname, port))
+        print("Connected to \"{}\" on port {}".format(hostname, port))
+
+    def changeName(self, name):
+        if name == "":
+            print("Please enter a name")
+            return
+
+        print(f"Setting name to {name}")
+        self.name = name
+
+    def chat(self, chat_name):
+        # checks
+        if self.name == "":
+            print("Please enter a name first")
+            return
+        # try to connect to the chat room
+
+        print(f"Entering chat mode for chat room {
+              chat_name}. Press <ctrl>] to exit chat mode.")
+        while True:
+            try:
+                # Prompt the user for a message to send to the chat room.
+                message = input(f"{chat_name} > ")
+                if '\x1d' in message:
+                    # Exit chat mode if the control sequence is entered.
+                    print('Exiting chat mode...')
+                    break
+                print(message)
+                # Send the message to the chat room.
+                # self.socket.sendall(message.encode(self.MSG_ENCODING))
+                # # Receive messages from the chat room.
+                # response = self.socket.recv(self.RECV_SIZE).decode(self.MSG_ENCODING)
+                # Output the received messages.
+                # print(response)
+            except (KeyboardInterrupt):
+                print()
+                print("Exiting chat mode...")
+                break
 
 
 ########################################################################
@@ -396,18 +437,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-r', '--role',
-                        choices=roles, 
+                        choices=roles,
                         help='client or server role',
                         required=True, type=str)
 
     args = parser.parse_args()
     roles[args.role]()
-                
+
 
 ########################################################################
-
-
-
-
-
-
