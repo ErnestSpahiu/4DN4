@@ -34,11 +34,6 @@ SOCKET_TIMEOUT = 4
 ########################################################################
 
 class Server:
-
-    ALL_IF_ADDRESS = "0.0.0.0"
-    SERVICE_SCAN_PORT = 30000
-    ADDRESS_PORT = (ALL_IF_ADDRESS, SERVICE_SCAN_PORT)
-
     HOSTNAME = "127.0.0.1"
     CHAT_ROOM_DIRECTORY_PORT = 50000
 
@@ -165,24 +160,6 @@ class Client:
 
     RECV_SIZE = 1024
     MSG_ENCODING = "utf-8"    
-
-    BROADCAST_ADDRESS = "255.255.255.255"
-    # BROADCAST_ADDRESS = "192.168.1.255"    
-    SERVICE_PORT = 30000
-    ADDRESS_PORT = (BROADCAST_ADDRESS, SERVICE_PORT)
-
-    SCAN_CYCLES = 2
-    SCAN_TIMEOUT = 2
-
-    SCAN_CMD = "SCAN"
-    SCAN_CMD_ENCODED = SCAN_CMD.encode(MSG_ENCODING)
-
-    SERVER_DIR = "./serverDirectory/"
-    CLIENT_DIR = "./clientDirectory/"
-
-    # Define the local file name where the downloaded file will be
-    # saved.
-
 
     def __init__(self):
         self.get_socket()       
