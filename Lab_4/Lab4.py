@@ -242,62 +242,6 @@ class Server:
         del self.chatrooms[chatname]
         
 
-
-
-
-"""
-            try:
-                while True:
-                    server_prompt_input = input("Connected to CRDS, please enter one of the following commands (getdir, makeroom <chat room name> <address> <port>, deleteroom <chat room name>: ")
-                    if server_prompt_input:
-                    # If the user enters something, process it.
-                        try:
-                            # Parse the input into a command and its
-                            # arguments.
-                            server_prompt_cmd, *server_prompt_args = server_prompt_input.split()
-                        except Exception as msg:
-                            print(msg)
-                            continue
-                        if server_prompt_cmd =='getdir':
-                            try:
-                                self.getDir()
-                            except Exception as msg:
-                                print(msg)
-                                exit()
-
-                        elif server_prompt_cmd =='makeroom':
-                            try:
-                                if (len(server_prompt_args) == 3):
-                                    self.makeRoom(server_prompt_args[0], server_prompt_args[1], int(server_prompt_args[2]))
-                                elif (len(server_prompt_args) == 2):
-                                    print("No <port> passed in")
-                                elif(len(server_prompt_args) == 1):
-                                    print("No <address>, <port> passed in")
-                                else:
-                                    print("No arguments passed in")
-
-                            except Exception as msg:
-                                print(msg)
-                                exit()
-                        elif server_prompt_cmd =='deleteroom':
-                            try:
-                                if (len(server_prompt_args) == 1):
-                                    pass
-                                else:
-                                    print("No <chat room name> passed in")
-                            except Exception as msg:
-                                print(msg)
-                                exit()
-                        else:
-                            pass       
-            except (KeyboardInterrupt, EOFError):
-                print()
-                print("Closing server connection ...")
-                # If we get and error or keyboard interrupt, make sure
-                # that we close the socket.
-                self.socket.close()
-                sys.exit(1)
-"""
 ########################################################################
 # Service Discovery Client
 #
@@ -375,12 +319,6 @@ class Client:
                         except Exception as msg:
                             print(msg)
                             exit()
-                    elif client_prompt_cmd == 'getdir':
-                        self.getdir()
-                    elif client_prompt_cmd == 'maekroom':
-                        self.makeroom()
-                    elif client_prompt_cmd == 'deleteroom':
-                        self.getdir()
                     else:
                         pass
 
@@ -396,6 +334,66 @@ class Client:
         # Connect to the server using its socket address tuple.
         self.socket.connect((hostname, port))
         print("Connected to \"{}\" on port {}".format(hostname, port))
+        self.input_for_server()
+
+    def input_for_server(self):
+        try:
+            while True:
+                server_prompt_input = input("Connected to CRDS, please enter one of the following commands (getdir, makeroom <chat room name> <address> <port>, deleteroom <chat room name>: ")
+                if server_prompt_input:
+                # If the user enters something, process it.
+                    try:
+                        # Parse the input into a command and its
+                        # arguments.
+                        server_prompt_cmd, *server_prompt_args = server_prompt_input.split()
+                    except Exception as msg:
+                        print(msg)
+                        continue
+                    if server_prompt_cmd =='getdir':
+                        try:
+                            self.getDir()
+                            break
+                        except Exception as msg:
+                            print(msg)
+                            exit()
+
+                    elif server_prompt_cmd =='makeroom':
+                        try:
+                            if (len(server_prompt_args) == 3):
+                                self.makeRoom(server_prompt_args[0], server_prompt_args[1], int(server_prompt_args[2]))
+                                break
+                            elif (len(server_prompt_args) == 2):
+                                print("No <port> passed in")
+                            elif(len(server_prompt_args) == 1):
+                                print("No <address>, <port> passed in")
+                            else:
+                                print("No arguments passed in")
+
+                        except Exception as msg:
+                            print(msg)
+                            exit()
+                    elif server_prompt_cmd =='deleteroom':
+                        try:
+                            if (len(server_prompt_args) == 1):
+                                self.deleteRoom(server_prompt_args[0])
+                            else:
+                                print("No <chat room name> passed in")
+                        except Exception as msg:
+                            print(msg)
+                            exit()
+                    else:
+                        pass
+                
+            #go back to main command prompt
+            self.prompt_user_forever() 
+
+        except (KeyboardInterrupt, EOFError):
+            print()
+            print("Closing server connection ...")
+            # If we get and error or keyboard interrupt, make sure
+            # that we close the socket.
+            self.socket.close()
+            sys.exit(1)
 
     def changeName(self, name):
         if name == "":
@@ -412,8 +410,7 @@ class Client:
             return
         # try to connect to the chat room
 
-        print(f"Entering chat mode for chat room {
-              chat_name}. Press <ctrl>] to exit chat mode.")
+        print(f"Entering chat mode for chat room {chat_name}. Press <ctrl>] to exit chat mode.")
         while True:
             try:
                 # Prompt the user for a message to send to the chat room.
@@ -434,7 +431,7 @@ class Client:
                 print("Exiting chat mode...")
                 break
     
-    def getdir(self):
+    def getDir(self):
         cmd_filed = CMD["GETDIR"].to_bytes(1, byteorder='big')
         try:
             # Send the request packet to the server.
@@ -451,7 +448,7 @@ class Client:
         dir = recvd_bytes.decode(MSG_ENCODING)
         print("Here is the listing of the current chat room directory:", json.loads(dir))
         
-    def makeroom(self, roomname, address, port):
+    def makeRoom(self, roomname, address, port):
         cmd_field = CMD["MAKEROOM"].to_bytes(1, byteorder='big')
         room = (" " + str(roomname) + " " + str(address) + " " + str(port)).encode(MSG_ENCODING)
         pkt = cmd_field + room
@@ -466,13 +463,11 @@ class Client:
                 self.socket.close()
                 return
             resp = recvd_bytes.decode(MSG_ENCODING)
-            #go back to main command prompt
-            self.prompt_user_forever 
         except:
             print("No connection.")
             return
     
-    def deleteroom(self, roomname):
+    def deleteRoom(self, roomname):
         cmd_field = CMD["DELETEROOM"].to_bytes(1, byteorder='big')
         room = (" "+str(roomname)).encode(MSG_ENCODING)
         pkt = cmd_field + room
@@ -486,8 +481,6 @@ class Client:
                 self.socket.close()
                 return
             resp = recvd_bytes.decode(MSG_ENCODING)
-            #go back to main command prompt
-            self.prompt_user_forever 
         except:
             print("No connection.")
             return
