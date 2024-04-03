@@ -121,9 +121,6 @@ class Server:
             self.chatrooms.append(
                 {'name': chatroom_name, 'addr_port': (multicast_ip, multicast_port)})
             print("Added Chatroom to Directory: ", self.chatrooms[-1])
-            resp = 1
-
-        connection.send(resp.to_bytes(1, byteorder='big'))
 
     def deleteRoom(self, connection):
         chatroom_del_byte_len = int.from_bytes(
@@ -230,8 +227,8 @@ class Client:
                     elif client_prompt_cmd == 'makeroom' and self.connected:
                         try:
                             if (len(client_prompt_args) == 3):
-                                self.makeRoom(client_prompt_args[0], client_prompt_args[1], int(
-                                    client_prompt_args[2]))
+                                self.makeRoom(
+                                    client_prompt_args[0], client_prompt_args[1], client_prompt_args[2])
                                 break
                             elif (len(client_prompt_args) == 2):
                                 print("No <port> passed in")
