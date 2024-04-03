@@ -145,10 +145,16 @@ class Server:
 #
 ########################################################################
 
+RX_BIND_ADDRESS = "0.0.0.0"
+
+
 class Client:
 
     RECV_SIZE = 1024
     MSG_ENCODING = "utf-8"
+    TTL = 1  # Hops
+    TTL_SIZE = 1  # Bytes
+    TTL_BYTE = TTL.to_bytes(TTL_SIZE, byteorder='big')
 
     def __init__(self):
         self.get_socket()
@@ -209,7 +215,7 @@ class Client:
                     elif client_prompt_cmd == 'chat':
                         try:
                             if (len(client_prompt_args) == 1):
-                                self.chat(client_prompt_args[0])
+                                self.start_chat_room(client_prompt_args[0])
                             else:
                                 print("No <chat room name> passed in")
                         except Exception as msg:
@@ -274,7 +280,7 @@ class Client:
         print(f"Setting name to {name}")
         self.name = name
 
-    def chat(self, chat_name):
+    def start_chat_room(self, chat_name):
         # checks
         if self.name == "":
             print("Please enter a name first")
@@ -282,7 +288,6 @@ class Client:
         # Make sure chatroom exists
         for room in self.chat_rooms:
             if room['name'] == chat_name:
-                print('here')
                 self.chat_room_address = room['addr_port'][0]
                 self.chat_room_port = room['addr_port'][1]
                 break
@@ -293,22 +298,63 @@ class Client:
         # connect to chatroom with multicast ip and port
         print(
             f"Entering chat mode for chat room {chat_name}. Press <ctrl>] to exit chat mode.")
-        # Create a UDP socket for multicast communication
-        multicast_socket = socket.socket(
-            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 
-        # Set the socket options to allow multiple sockets to use the same port
-        multicast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.multicast_addr_port = (
+            self.chat_room_address, self.chat_room_port)
 
-        # Bind the socket to a specific address and port
-        multicast_socket.bind(('', self.chat_room_port))
+        # Sender
+        self.multicast_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.multicast_send.setsockopt(
+            socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, Client.TTL_BYTE)
 
-        # Join the multicast group
-        multicast_group = socket.inet_aton(self.chat_room_address)
-        multicast_socket.setsockopt(
-            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_group)
+        # Receiver and Registration
+        self.multicast_rec = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.multicast_rec.setsockopt(
+            socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+        self.multicast_rec.setsockopt(
+            socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, Client.TTL_BYTE)
+        self.multicast_rec.bind(
+            (RX_BIND_ADDRESS, int(self.multicast_addr_port[1])))
 
-        # Receive and send messages in the chat room
+        multicast_group_bytes = socket.inet_aton(self.multicast_addr_port[0])
+        print("Multicast Group: ", self.multicast_addr_port[0])
+
+        # Set up the interface to be used.
+        multicast_if_bytes = socket.inet_aton(RX_BIND_ADDRESS)
+
+        # Form the multicast request.
+        multicast_request = multicast_group_bytes + multicast_if_bytes
+        print("multicast_request = ", multicast_request)
+
+        # Issue the Multicast IP Add Membership request.
+        print("Adding membership (address/interface): ",
+              self.multicast_addr_port[0], "/", self.multicast_addr_port[1])
+        self.multicast_rec.setsockopt(
+            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
+
+        # Start the receiver thread.
+        threading.Thread(target=self.receive_chat_messages,
+                         args=(chat_name,)).start()
+
+        # Start the sender thread.
+        threading.Thread(target=self.send_chat_messages,
+                         args=(chat_name,)).start()
+
+    def receive_chat_messages(self, chat_name):
+        while True:
+            try:
+                # Receive messages from the multicast group
+                response, address = self.multicast_rec.recvfrom(
+                    Client.RECV_SIZE)
+                response = response.decode(self.MSG_ENCODING)
+                print(response)
+            except (KeyboardInterrupt):
+                print()
+                print("Exiting chat mode...")
+                break
+
+    def send_chat_messages(self, chat_name):
+        # Send messages in the chat room
         while True:
             try:
                 # Prompt the user for a message to send to the chat room.
@@ -318,20 +364,18 @@ class Client:
                     print('Exiting chat mode...')
                     break
                 # Send the message to the multicast group
-                multicast_socket.sendto(message.encode(
-                    self.MSG_ENCODING), (self.chat_room_address, self.chat_room_port))
-
-                # Receive messages from the multicast group
-                response, address = multicast_socket.recvfrom(self.RECV_SIZE)
-                response = response.decode(self.MSG_ENCODING)
-                print(response)
+                message_bytes = f'{self.name}: {message}'.encode(
+                    self.MSG_ENCODING)
+                port = (self.multicast_addr_port[0], int(
+                    self.multicast_addr_port[1]))
+                self.multicast_send.sendto(message_bytes, port)
             except (KeyboardInterrupt):
                 print()
                 print("Exiting chat mode...")
                 break
 
         # Close the multicast socket
-        multicast_socket.close()
+        self.multicast_socket.close()
 
     def getDir(self):
         cmd_filed = CMD["GETDIR"].to_bytes(1, byteorder='big')
