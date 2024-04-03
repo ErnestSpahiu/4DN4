@@ -89,13 +89,10 @@ class Server:
 
             cmd = int.from_bytes(recvd_bytes, byteorder='big')
             if cmd == CMD["GETDIR"]:
-                print("Server: Recieved GETDIR CMD")
                 self.getDir(connection)
             if cmd == CMD["MAKEROOM"]:
-                print("Server: Recieved MAKEROOM CMD")
                 self.makeRoom(connection)
             if cmd == CMD["DELETEROOM"]:
-                print("Server: Recieved DELETEROOM CMD")
                 self.deleteRoom(connection)
 
     def getDir(self, connection):
@@ -111,8 +108,6 @@ class Server:
             Server.RECV_SIZE).decode(Server.MSG_ENCODING)
 
         for room in self.chatrooms:
-            print(room['address'])
-            print(room['port'])
             if room['address'] != multicast_ip or room['port'] != multicast_port:
                 self.chatrooms.append(
                     {'name': roomname, 'address': multicast_ip, 'port': multicast_port})
