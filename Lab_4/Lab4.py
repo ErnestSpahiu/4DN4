@@ -8,6 +8,7 @@ import sys
 import errno
 import threading
 import os
+import json
 
 
 
@@ -374,6 +375,12 @@ class Client:
                         except Exception as msg:
                             print(msg)
                             exit()
+                    elif client_prompt_cmd == 'getdir':
+                        self.getdir()
+                    elif client_prompt_cmd == 'maekroom':
+                        self.makeroom()
+                    elif client_prompt_cmd == 'deleteroom':
+                        self.getdir()
                     else:
                         pass
 
@@ -426,6 +433,64 @@ class Client:
                 print()
                 print("Exiting chat mode...")
                 break
+    
+    def getdir(self):
+        cmd_filed = CMD["GETDIR"].to_bytes(1, byteorder='big')
+        try:
+            # Send the request packet to the server.
+            self.socket.sendall(cmd_filed)
+        except:
+            print("No connection.")
+            return
+        #receive the directory listing from server
+        recvd_bytes = self.socket.recv(Client.RECV_SIZE)
+        if len(recv_bytes) == 0:
+            print("Closing server connection ... ")
+            self.socket.close()
+            return
+        dir = recvd_bytes.decode(MSG_ENCODING)
+        print("Here is the listing of the current chat room directory:", json.loads(dir))
+        
+    def makeroom(self, roomname, address, port):
+        cmd_field = CMD["MAKEROOM"].to_bytes(1, byteorder='big')
+        room = (" " + str(roomname) + " " + str(address) + " " + str(port)).encode(MSG_ENCODING)
+        pkt = cmd_field + room
+
+        try:
+            #send request to server
+            self.socket.sendall(pkt)
+            #receive response
+            recvd_bytes = self.socket.recv(Client.RECV_SIZE)
+            if len(recv_bytes) == 0:
+                print("Closing server connection ... ")
+                self.socket.close()
+                return
+            resp = recvd_bytes.decode(MSG_ENCODING)
+            #go back to main command prompt
+            self.prompt_user_forever 
+        except:
+            print("No connection.")
+            return
+    
+    def deleteroom(self, roomname):
+        cmd_field = CMD["DELETEROOM"].to_bytes(1, byteorder='big')
+        room = (" "+str(roomname)).encode(MSG_ENCODING)
+        pkt = cmd_field + room
+        try:
+            #send request to server
+            self.socket.sendall(pkt)
+            #receive response
+            recvd_bytes = self.socket.recv(Client.RECV_SIZE)
+            if len(recv_bytes) == 0:
+                print("Closing server connection ... ")
+                self.socket.close()
+                return
+            resp = recvd_bytes.decode(MSG_ENCODING)
+            #go back to main command prompt
+            self.prompt_user_forever 
+        except:
+            print("No connection.")
+            return
 
 
 ########################################################################
