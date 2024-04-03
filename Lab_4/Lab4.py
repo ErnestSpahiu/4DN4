@@ -342,7 +342,7 @@ class Client:
                     return
                 # Receive messages from the multicast group
                 response, address = self.multicast_rec.recvfrom(
-                    Client.RECV_SIZE, timeout=10)
+                    Client.RECV_SIZE)
                 response = response.decode(self.MSG_ENCODING)
 
                 # Parse the sender's name from the received message
@@ -356,10 +356,8 @@ class Client:
                 print(f"<{sender_name}>: {message}", end='')
                 print('> ')
 
-        except (KeyboardInterrupt):
-            print()
-            print("Exiting chat mode...")
-            return
+        except:
+            pass
 
     def send_chat_messages(self, chat_name):
         # Send messages in the chat room
@@ -375,6 +373,8 @@ class Client:
                     # Exit chat mode if the control sequence is entered.
                     print('Exiting chat mode...')
                     self.kill_threads = True
+                    self.multicast_rec.close()
+                    self.multicast_send.close()
                     return
                 # Send the message to the multicast group
                 message_bytes = f'{self.name}: {message}'.encode(
