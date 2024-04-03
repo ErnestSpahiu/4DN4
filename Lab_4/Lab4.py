@@ -336,26 +336,28 @@ class Client:
         self.recv_thread.join()
         self.send_thread.join()
 
+        return
+
     def receive_chat_messages(self, chat_name):
-        while True:
-            try:
+        try:
+            while True:
                 if self.kill_threads:
                     return
-
                 # Receive messages from the multicast group
                 response, address = self.multicast_rec.recvfrom(
                     Client.RECV_SIZE)
                 response = response.decode(self.MSG_ENCODING)
-                print(response)
-            except (KeyboardInterrupt):
-                print()
-                print("Exiting chat mode...")
-                break
+                print(f'\n{response}')
+                print(f"{chat_name} > ")
+        except (KeyboardInterrupt):
+            print()
+            print("Exiting chat mode...")
+            return
 
     def send_chat_messages(self, chat_name):
         # Send messages in the chat room
-        while True:
-            try:
+        try:
+            while True:
                 if self.kill_threads:
                     return
 
@@ -373,13 +375,9 @@ class Client:
                 port = (self.multicast_addr_port[0], int(
                     self.multicast_addr_port[1]))
                 self.multicast_send.sendto(message_bytes, port)
-            except (KeyboardInterrupt):
-                print()
-                print("Exiting chat mode...")
-                break
-
-        # Close the multicast socket
-        self.multicast_socket.close()
+        except (KeyboardInterrupt):
+            print()
+            print("Exiting chat mode...")
 
     def getDir(self):
         cmd_field = CMD["GETDIR"].to_bytes(1, byteorder='big')
