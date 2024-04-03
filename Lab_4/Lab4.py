@@ -406,6 +406,9 @@ class Client:
         delete_bytes = roomname.encode(Server.MSG_ENCODING)
         delete_size = len(roomname).to_bytes(1, byteorder='big')
         pkt = cmd_field + delete_size + delete_bytes
+        for room in self.chat_rooms:
+            if room['name'] == roomname:
+                self.chat_rooms.remove(room)
         self.socket.send(pkt)
         self.prompt_user_forever()
 
