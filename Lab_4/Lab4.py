@@ -26,39 +26,6 @@ MSG_ENCODING = "utf-8"
 SOCKET_TIMEOUT = 4
 
 ########################################################################
-# recv_bytes frontend to recv
-########################################################################
-
-# Call recv to read bytecount_target bytes from the socket. Return a
-# status (True or False) and the received butes (in the former case).
-def recv_bytes(sock, bytecount_target):
-    # Be sure to timeout the socket if we are given the wrong
-    # information.
-    print(bytecount_target)
-    sock.settimeout(SOCKET_TIMEOUT)
-    try:
-        byte_recv_count = 0 # total received bytes
-        recv_bytes = b''    # complete received message
-        while byte_recv_count < bytecount_target:
-            # Ask the socket for the remaining byte count.
-            new_bytes = sock.recv(bytecount_target-byte_recv_count)
-            # If ever the other end closes on us before we are done,
-            # give up and return a False status with zero bytes.
-            if not new_bytes:
-                return(False, b'')
-            byte_recv_count += len(new_bytes)
-            recv_bytes += new_bytes
-        # Turn off the socket timeout if we finish correctly.
-        sock.settimeout(None)            
-        return (True, recv_bytes)
-    # If the socket times out, something went wrong. Return a False
-    # status.
-    except socket.timeout:
-        sock.settimeout(None)        
-        print("recv_bytes: Recv socket timeout!")
-        return (False, b'')
-    
-########################################################################
 # Service Discovery Server
 #
 # The server listens on a UDP socket. When a service discovery packet
@@ -75,26 +42,10 @@ class Server:
     HOSTNAME = "127.0.0.1"
     CHAT_ROOM_DIRECTORY_PORT = 50000
 
-    MSG_ENCODING = "utf-8"    
-    
-    SCAN_CMD = "SCAN"
-    SCAN_CMD_ENCODED = SCAN_CMD.encode(MSG_ENCODING)
-    
-    MSG = "Group 20's File Sharing Service"
-    MSG_ENCODED = MSG.encode(MSG_ENCODING)
+    MSG_ENCODING = "utf-8" 
 
     RECV_SIZE = 1024
     BACKLOG = 10
-
-    FILE_NOT_FOUND_MSG = "Error: Requested file is not available!"
-
-    # This is the file that the client will request using a GET.
-    # REMOTE_FILE_NAME = "greek.txt"
-    # REMOTE_FILE_NAME = "twochars.txt"
-    REMOTE_FILE_NAME = "ocanada_greek.txt"
-    # REMOTE_FILE_NAME = "ocanada_english.txt"
-
-    SERVER_DIR = "./serverDirectory/"
 
     def __init__(self):
         self.directory = {}
@@ -327,4 +278,9 @@ if __name__ == '__main__':
                 
 
 ########################################################################
+
+
+
+
+
 
