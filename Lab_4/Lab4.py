@@ -330,6 +330,8 @@ class Client:
         self.recv_thread.daemon = True
         self.send_thread.daemon = True
 
+        print(chat_name)
+
         self.recv_thread.start()
         self.send_thread.start()
 
@@ -345,10 +347,20 @@ class Client:
                     return
                 # Receive messages from the multicast group
                 response, address = self.multicast_rec.recvfrom(
-                    Client.RECV_SIZE)
+                    Client.RECV_SIZE, timeout=10)
                 response = response.decode(self.MSG_ENCODING)
-                print(f'\n{response}')
-                print(f"{chat_name} > ")
+
+                # Parse the sender's name from the received message
+                sender_name, message = response.split(': ', 1)
+
+                # If the sender is this client, ignore the message
+                if sender_name == self.name:
+                    continue
+                # Clear current line and print the message to the user and put cursor back at the end of the message
+                print("\033[A                             \033[A")
+                print(f"<{sender_name}>: {message}", end='')
+                print('> ')
+
         except (KeyboardInterrupt):
             print()
             print("Exiting chat mode...")
@@ -362,7 +374,7 @@ class Client:
                     return
 
                 # Prompt the user for a message to send to the chat room.
-                message = input(f"{chat_name} > ")
+                message = input('> ')
                 # "\x1d == Ctrl + ]"
                 if '\x1d' in message:
                     # Exit chat mode if the control sequence is entered.
