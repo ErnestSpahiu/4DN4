@@ -123,9 +123,6 @@ class Server:
         else:
             self.chatrooms.append({'name': chatroom_name, 'addr_port': (multicast_ip, multicast_port)})
             print("Added Chatroom to Directory: ", self.chatrooms[-1])
-            resp = 1
-
-        connection.send(resp.to_bytes(1, byteorder='big'))
 
     def deleteRoom(self, connection):
         chatroom_del_byte_len = int.from_bytes(connection.recv(1), byteorder='big')
