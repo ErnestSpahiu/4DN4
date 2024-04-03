@@ -320,13 +320,20 @@ class Client:
         self.multicast_rec.setsockopt(
             socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
 
-        # Start the receiver thread.
-        threading.Thread(target=self.receive_chat_messages,
-                         args=(chat_name,)).start()
+        # Start the receiver/sender threads.
+        recv_thread = threading.Thread(target=self.receive_chat_messages,
+                                       args=(chat_name,))
+        send_thread = threading.Thread(target=self.send_chat_messages,
+                                       args=(chat_name,))
 
-        # Start the sender thread.
-        threading.Thread(target=self.send_chat_messages,
-                         args=(chat_name,)).start()
+        recv_thread.daemon = True
+        send_thread.daemon = True
+
+        recv_thread.start()
+        send_thread.start()
+
+        recv_thread.join()
+        send_thread.join()
 
     def receive_chat_messages(self, chat_name):
         while True:
