@@ -37,7 +37,7 @@ class Server:
     RECV_SIZE = 1024
     BACKLOG = 10
 
-    chatrooms = [{'name': 'Room_0', 'addr_port': ['239.0.0.1', '1000']}]
+    chatrooms = [{'name': 'Room_0', 'address&port': ['239.0.0.1', '1000']}]
 
     def __init__(self):
         self.get_socket()
@@ -103,34 +103,24 @@ class Server:
         connection.send(data_string.encode(MSG_ENCODING))
 
     def makeRoom(self, connection):
-        # recieve more bytes containing chatroom name and multicast ip and port
-        chatroom_name_byte_len = int.from_bytes(
-            connection.recv(1), byteorder='big')
-        chatroom_name = connection.recv(
-            chatroom_name_byte_len).decode(Server.MSG_ENCODING)
+        roomname_size = int.from_bytes(connection.recv(1), byteorder='big')
+        roomname = connection.recv(roomname_size).decode(Server.MSG_ENCODING)
 
         multicast_ip = socket.inet_ntoa(connection.recv(4))
         multicast_port = connection.recv(
             Server.RECV_SIZE).decode(Server.MSG_ENCODING)
 
         for room in self.chatrooms:
-            if list(room['addr_port']) == [multicast_ip, multicast_port]:
-                resp = 0
+            if list(room['address&port']) == [multicast_ip, multicast_port]:
                 break
         else:
-            self.chatrooms.append(
-                {'name': chatroom_name, 'addr_port': (multicast_ip, multicast_port)})
-            print("Added Chatroom to Directory: ", self.chatrooms[-1])
+            self.chatrooms.append({'name': roomname, 'address&port': (multicast_ip, multicast_port)})
 
     def deleteRoom(self, connection):
-        chatroom_del_byte_len = int.from_bytes(
-            connection.recv(1), byteorder='big')
-        chatroom_del = connection.recv(
-            chatroom_del_byte_len).decode(Server.MSG_ENCODING)
-        print("Delete: " + chatroom_del)
+        roomname_size = int.from_bytes(connection.recv(1), byteorder='big')
+        roomname = connection.recv(roomname_size).decode(Server.MSG_ENCODING)
         for room in self.chatrooms:
-            if room['name'] == chatroom_del:
-                # print("Time to delete chatroom: ", room)
+            if room['name'] == roomname:
                 self.chatrooms.remove(room)
 
 
@@ -201,7 +191,7 @@ class Client:
                         # Disconnect from the FS.
                         self.connected = False
                         self.socket.close()
-                        break
+                        continue
 
                     elif client_prompt_cmd == 'name':
                         try:
@@ -378,10 +368,10 @@ class Client:
         self.multicast_socket.close()
 
     def getDir(self):
-        cmd_filed = CMD["GETDIR"].to_bytes(1, byteorder='big')
+        cmd_field = CMD["GETDIR"].to_bytes(1, byteorder='big')
         try:
             # Send the request packet to the server.
-            self.socket.sendall(cmd_filed)
+            self.socket.sendall(cmd_field)
         except:
             print("No connection.")
             return
@@ -399,22 +389,22 @@ class Client:
 
     def makeRoom(self, roomname, address, port):
         cmd_field = CMD["MAKEROOM"].to_bytes(1, byteorder='big')
-        name_len_bytes = len(roomname).to_bytes(1, byteorder='big')
-        name_bytes = roomname.encode(Server.MSG_ENCODING)
+        roomname_bytes = roomname.encode(Server.MSG_ENCODING)
+        roomname_size = len(roomname).to_bytes(1, byteorder='big')
 
         address_bytes = socket.inet_aton(address)
         port_str_bytes = port.encode(Server.MSG_ENCODING)
 
-        pkt = cmd_field + name_len_bytes + name_bytes + address_bytes + port_str_bytes
+        pkt = cmd_field + roomname_size + roomname_bytes + address_bytes + port_str_bytes
 
         self.socket.send(pkt)
         self.prompt_user_forever()
 
     def deleteRoom(self, roomname):
         cmd_field = CMD["DELETEROOM"].to_bytes(1, byteorder='big')
-        del_len_bytes = len(roomname).to_bytes(1, byteorder='big')
-        del_bytes = roomname.encode(Server.MSG_ENCODING)
-        pkt = cmd_field + del_len_bytes + del_bytes
+        delete_bytes = roomname.encode(Server.MSG_ENCODING)
+        delete_size = len(roomname).to_bytes(1, byteorder='big')
+        pkt = cmd_field + delete_size + delete_bytes
         self.socket.send(pkt)
         self.prompt_user_forever()
 
