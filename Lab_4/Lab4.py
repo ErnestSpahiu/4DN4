@@ -277,8 +277,8 @@ class Client:
         # Make sure chatroom exists
         for room in self.chat_rooms:
             if room['name'] == chat_name:
-                chat_room_address = room['addr_port'][0]
-                chat_room_port = room['addr_port'][1]
+                chat_room_address = room['address&port'][0]
+                chat_room_port = room['address&port'][1]
                 break
         else:
             print("Chat room does not exist")
@@ -288,8 +288,7 @@ class Client:
         print(
             f"Entering chat mode for chat room {chat_name}. Press <ctrl>] to exit chat mode.")
 
-        self.multicast_addr_port = (
-            self.chat_room_address, self.chat_room_port)
+        self.multicast_addr_port = (chat_room_address, chat_room_port)
 
         # Sender
         self.multicast_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
