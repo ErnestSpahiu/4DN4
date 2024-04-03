@@ -114,8 +114,8 @@ class Server:
             print(room['address'])
             print(room['port'])
             if room['address'] != multicast_ip or room['port'] != multicast_port:
-               self.chatrooms.append(
-                {'name': roomname, 'address': multicast_ip, 'port': multicast_port})
+                self.chatrooms.append(
+                    {'name': roomname, 'address': multicast_ip, 'port': multicast_port})
 
     def deleteRoom(self, connection):
         roomname_size = int.from_bytes(connection.recv(1), byteorder='big')
@@ -152,6 +152,7 @@ class Client:
         self.connected = False
         self.name = ""
         self.chat_rooms = []
+        self.kill_threads = False
         self.prompt_user_forever()
 
     def get_socket(self):
@@ -278,7 +279,7 @@ class Client:
         for room in self.chat_rooms:
             if room['name'] == chat_name:
                 chat_room_address = room['address']
-                chat_room_port = room['address']
+                chat_room_port = room['port']
                 break
         else:
             print("Chat room does not exist")
@@ -321,23 +322,26 @@ class Client:
             socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
 
         # Start the receiver/sender threads.
-        recv_thread = threading.Thread(target=self.receive_chat_messages,
-                                       args=(chat_name,))
-        send_thread = threading.Thread(target=self.send_chat_messages,
-                                       args=(chat_name,))
+        self.recv_thread = threading.Thread(target=self.receive_chat_messages,
+                                            args=(chat_name,))
+        self.send_thread = threading.Thread(target=self.send_chat_messages,
+                                            args=(chat_name,))
 
-        recv_thread.daemon = True
-        send_thread.daemon = True
+        self.recv_thread.daemon = True
+        self.send_thread.daemon = True
 
-        recv_thread.start()
-        send_thread.start()
+        self.recv_thread.start()
+        self.send_thread.start()
 
-        recv_thread.join()
-        send_thread.join()
+        self.recv_thread.join()
+        self.send_thread.join()
 
     def receive_chat_messages(self, chat_name):
         while True:
             try:
+                if self.kill_threads:
+                    return
+
                 # Receive messages from the multicast group
                 response, address = self.multicast_rec.recvfrom(
                     Client.RECV_SIZE)
@@ -352,12 +356,17 @@ class Client:
         # Send messages in the chat room
         while True:
             try:
+                if self.kill_threads:
+                    return
+
                 # Prompt the user for a message to send to the chat room.
                 message = input(f"{chat_name} > ")
+                # "\x1d == Ctrl + ]"
                 if '\x1d' in message:
                     # Exit chat mode if the control sequence is entered.
                     print('Exiting chat mode...')
-                    break
+                    self.kill_threads = True
+                    return
                 # Send the message to the multicast group
                 message_bytes = f'{self.name}: {message}'.encode(
                     self.MSG_ENCODING)
