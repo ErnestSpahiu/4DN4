@@ -229,7 +229,7 @@ class Client:
                     elif client_prompt_cmd =='makeroom' and self.connected:
                         try:
                             if (len(client_prompt_args) == 3):
-                                self.makeRoom(client_prompt_args[0], client_prompt_args[1], int(client_prompt_args[2]))
+                                self.makeRoom(client_prompt_args[0], client_prompt_args[1], client_prompt_args[2])
                                 break
                             elif (len(client_prompt_args) == 2):
                                 print("No <port> passed in")
