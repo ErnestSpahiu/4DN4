@@ -5,33 +5,28 @@
 import socket
 import argparse
 import sys
-import errno
 import threading
-import os
 import json
-
-
 
 ########################################################################
 # recv_bytes frontend to recv
 ########################################################################
 
 
-CMD_FIELD_LEN            = 1 # 1 byte commands sent from the client.
-CHATNAME_SIZE_FIELD_LEN  = 1 # 1 byte Chat name size field.
-ADDR_SIZE_FIELD_LEN  = 1 # 1 byte Chat name size field.
-PORT_SIZE_FIELD_LEN  = 1 # 1 byte Chat name size field.
+CMD_FIELD_LEN = 1  # 1 byte commands sent from the client.
+CHATNAME_SIZE_FIELD_LEN = 1  # 1 byte Chat name size field.
+ADDR_SIZE_FIELD_LEN = 1  # 1 byte Chat name size field.
+PORT_SIZE_FIELD_LEN = 1  # 1 byte Chat name size field.
 
 MSG_ENCODING = "utf-8"
-CMD = {"GETDIR" : 1, "MAKEROOM" : 2, "DELETEROOM": 3}
+CMD = {"GETDIR": 1, "MAKEROOM": 2, "DELETEROOM": 3}
 SOCKET_TIMEOUT = 4
 
-    
+
 ########################################################################
 # Chat room Discovery Server
-# 
+#
 ########################################################################
-
 
 class Server:
     HOSTNAME = "127.0.0.1"
@@ -74,7 +69,7 @@ class Server:
         except KeyboardInterrupt:
             print()
         finally:
-            print("Closing {} client connection ... ".format(address_port))     
+            print("Closing {} client connection ... ".format(address_port))
             connection.close()
             self.socket.close()
             sys.exit(1)
@@ -84,7 +79,7 @@ class Server:
         connection.setblocking(True)
         while True:
             recvd_bytes = connection.recv(1)
-                        
+
             if len(recvd_bytes) == 0:
                 print("Closing {} client connection ... ".format(address_port))
                 connection.close()
@@ -103,17 +98,17 @@ class Server:
                 print("Server: Recieved DELETEROOM CMD")
                 error = self.deleteRoom(connection)
 
-        
     def getDir(self, connection):
         data_string = json.dumps(self.chatrooms)
         connection.send(data_string.encode(MSG_ENCODING))
-    
+
     def makeRoom(self, connection):
         roomname_size = int.from_bytes(connection.recv(1), byteorder='big')
         roomname = connection.recv(roomname_size).decode(Server.MSG_ENCODING)
 
         multicast_ip = socket.inet_ntoa(connection.recv(4))
-        multicast_port = connection.recv(Server.RECV_SIZE).decode(Server.MSG_ENCODING)
+        multicast_port = connection.recv(
+            Server.RECV_SIZE).decode(Server.MSG_ENCODING)
 
         for room in self.chatrooms:
             if list(room['address&port']) == [multicast_ip, multicast_port]:
@@ -127,7 +122,7 @@ class Server:
         for room in self.chatrooms:
             if room['name'] == roomname:
                 self.chatrooms.remove(room)
-        
+
 
 ########################################################################
 # Service Discovery Client
@@ -149,7 +144,10 @@ class Client:
         self.get_socket()
         self.connected = False
         self.prompt_user_forever()
-        self.name = ""
+        self.name = "DefaultUser"
+        self.chat_rooms = []
+        self.chat_room_address = ""
+        self.chat_room_port = 0
 
     def get_socket(self):
         try:
@@ -162,7 +160,7 @@ class Client:
 
         try:
             while True:
-                # We are connected to the FS. Prompt the user for what to
+                # We are connected to the server. Prompt the user for what to
                 # do.
                 client_prompt_input = input(
                     "Please enter one of the following commands (connect, bye, name <chat name>, chat <chat room name>: ") if not self.connected else input(
@@ -182,14 +180,14 @@ class Client:
                         except Exception as msg:
                             print(msg)
                             exit()
-                        
-                    elif client_prompt_cmd =='bye':
+
+                    elif client_prompt_cmd == 'bye':
                         # Disconnect from the FS.
                         self.connected = False
                         self.socket.close()
                         break
 
-                    elif client_prompt_cmd =='name':
+                    elif client_prompt_cmd == 'name':
                         try:
                             if (len(client_prompt_args) == 1):
                                 self.changeName(client_prompt_args[0])
@@ -199,8 +197,6 @@ class Client:
                             print(msg)
                             exit()
                     elif client_prompt_cmd == 'chat':
-                        print(len(client_prompt_args))
-                        print(f"args: {client_prompt_args}")
                         try:
                             if (len(client_prompt_args) == 1):
                                 self.chat(client_prompt_args[0])
@@ -210,7 +206,7 @@ class Client:
                             print(msg)
                             exit()
 
-                    elif client_prompt_cmd =='getdir' and self.connected:
+                    elif client_prompt_cmd == 'getdir' and self.connected:
                         try:
                             self.getDir()
                             break
@@ -218,14 +214,15 @@ class Client:
                             print(msg)
                             exit()
 
-                    elif client_prompt_cmd =='makeroom' and self.connected:
+                    elif client_prompt_cmd == 'makeroom' and self.connected:
                         try:
                             if (len(client_prompt_args) == 3):
-                                self.makeRoom(client_prompt_args[0], client_prompt_args[1], client_prompt_args[2])
+                                self.makeRoom(
+                                    client_prompt_args[0], client_prompt_args[1], client_prompt_args[2])
                                 break
                             elif (len(client_prompt_args) == 2):
                                 print("No <port> passed in")
-                            elif(len(client_prompt_args) == 1):
+                            elif (len(client_prompt_args) == 1):
                                 print("No <address>, <port> passed in")
                             else:
                                 print("No arguments passed in")
@@ -233,7 +230,7 @@ class Client:
                         except Exception as msg:
                             print(msg)
                             exit()
-                    elif client_prompt_cmd =='deleteroom' and self.connected:
+                    elif client_prompt_cmd == 'deleteroom' and self.connected:
                         try:
                             if (len(client_prompt_args) == 1):
                                 self.deleteRoom(client_prompt_args[0])
@@ -272,9 +269,36 @@ class Client:
         if self.name == "":
             print("Please enter a name first")
             return
-        # try to connect to the chat room
+        # Make sure chatroom exists
+        for room in self.chat_rooms:
+            if room['name'] == chat_name:
+                print('here')
+                self.chat_room_address = room['addr_port'][0]
+                self.chat_room_port = room['addr_port'][1]
+                break
+        else:
+            print("Chat room does not exist")
+            return
 
-        print(f"Entering chat mode for chat room {chat_name}. Press <ctrl>] to exit chat mode.")
+        # connect to chatroom with multicast ip and port
+        print(
+            f"Entering chat mode for chat room {chat_name}. Press <ctrl>] to exit chat mode.")
+        # Create a UDP socket for multicast communication
+        multicast_socket = socket.socket(
+            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+
+        # Set the socket options to allow multiple sockets to use the same port
+        multicast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        # Bind the socket to a specific address and port
+        multicast_socket.bind(('', self.chat_room_port))
+
+        # Join the multicast group
+        multicast_group = socket.inet_aton(self.chat_room_address)
+        multicast_socket.setsockopt(
+            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, multicast_group)
+
+        # Receive and send messages in the chat room
         while True:
             try:
                 # Prompt the user for a message to send to the chat room.
@@ -283,18 +307,22 @@ class Client:
                     # Exit chat mode if the control sequence is entered.
                     print('Exiting chat mode...')
                     break
-                print(message)
-                # Send the message to the chat room.
-                # self.socket.sendall(message.encode(self.MSG_ENCODING))
-                # # Receive messages from the chat room.
-                # response = self.socket.recv(self.RECV_SIZE).decode(self.MSG_ENCODING)
-                # Output the received messages.
-                # print(response)
+                # Send the message to the multicast group
+                multicast_socket.sendto(message.encode(
+                    self.MSG_ENCODING), (self.chat_room_address, self.chat_room_port))
+
+                # Receive messages from the multicast group
+                response, address = multicast_socket.recvfrom(self.RECV_SIZE)
+                response = response.decode(self.MSG_ENCODING)
+                print(response)
             except (KeyboardInterrupt):
                 print()
                 print("Exiting chat mode...")
                 break
-    
+
+        # Close the multicast socket
+        multicast_socket.close()
+
     def getDir(self):
         cmd_field = CMD["GETDIR"].to_bytes(1, byteorder='big')
         try:
@@ -303,16 +331,18 @@ class Client:
         except:
             print("No connection.")
             return
-        #receive the directory listing from server
+        # receive the directory listing from server
         recvd_bytes = self.socket.recv(Client.RECV_SIZE)
         if len(recvd_bytes) == 0:
             print("Closing server connection ... ")
             self.socket.close()
             return
-        dir = recvd_bytes.decode(Server.MSG_ENCODING)
-        print("Here is the listing of the current chat room directory:", json.loads(dir))
+        dir = json.loads(recvd_bytes.decode(Server.MSG_ENCODING))
+        self.chat_rooms = dir
+        print("Here is the listing of the current chat room directory:",
+              dir)
         self.prompt_user_forever()
-        
+
     def makeRoom(self, roomname, address, port):
         cmd_field = CMD["MAKEROOM"].to_bytes(1, byteorder='big')
         roomname_bytes = roomname.encode(Server.MSG_ENCODING)
@@ -325,7 +355,7 @@ class Client:
 
         self.socket.send(pkt)
         self.prompt_user_forever()
-    
+
     def deleteRoom(self, roomname):
         cmd_field = CMD["DELETEROOM"].to_bytes(1, byteorder='big')
         delete_bytes = roomname.encode(Server.MSG_ENCODING)
