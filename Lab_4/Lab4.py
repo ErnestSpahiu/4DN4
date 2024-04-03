@@ -114,7 +114,8 @@ class Server:
             if list(room['address&port']) == [multicast_ip, multicast_port]:
                 break
         else:
-            self.chatrooms.append({'name': roomname, 'address&port': (multicast_ip, multicast_port)})
+            self.chatrooms.append(
+                {'name': roomname, 'address&port': (multicast_ip, multicast_port)})
 
     def deleteRoom(self, connection):
         roomname_size = int.from_bytes(connection.recv(1), byteorder='big')
@@ -149,11 +150,11 @@ class Client:
     def __init__(self):
         self.get_socket()
         self.connected = False
-        self.prompt_user_forever()
-        self.name = "DefaultUser"
+        self.name = ""
         self.chat_rooms = []
         self.chat_room_address = ""
         self.chat_room_port = 0
+        self.prompt_user_forever()
 
     def get_socket(self):
         try:
