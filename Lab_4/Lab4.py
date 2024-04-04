@@ -277,8 +277,8 @@ class Client:
         # Make sure chatroom exists
         for room in self.chat_rooms:
             if room['name'] == chat_name:
-                chat_room_address = room['address&port'][0]
-                chat_room_port = room['address&port'][1]
+                chat_room_address = room['address']
+                chat_room_port = room['address']
                 break
         else:
             print("Chat room does not exist")
@@ -396,7 +396,7 @@ class Client:
         pkt = cmd_field + roomname_size + roomname_bytes + address_bytes + port_str_bytes
 
         self.chat_rooms.append(
-            {'name': roomname, 'address&port': (address, port)})
+            {'name': roomname, 'address': address, 'port': port})
         self.socket.send(pkt)
         self.prompt_user_forever()
 
