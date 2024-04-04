@@ -185,7 +185,7 @@ class Client:
                         # Disconnect from the FS.
                         self.connected = False
                         self.socket.close()
-                        break
+                        continue
 
                     elif client_prompt_cmd == 'name':
                         try:
