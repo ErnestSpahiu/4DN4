@@ -152,8 +152,6 @@ class Client:
         self.connected = False
         self.name = ""
         self.chat_rooms = []
-        self.chat_room_address = ""
-        self.chat_room_port = 0
         self.prompt_user_forever()
 
     def get_socket(self):
@@ -279,8 +277,8 @@ class Client:
         # Make sure chatroom exists
         for room in self.chat_rooms:
             if room['name'] == chat_name:
-                self.chat_room_address = room['addr_port'][0]
-                self.chat_room_port = room['addr_port'][1]
+                chat_room_address = room['address&port'][0]
+                chat_room_port = room['address&port'][1]
                 break
         else:
             print("Chat room does not exist")
@@ -290,8 +288,7 @@ class Client:
         print(
             f"Entering chat mode for chat room {chat_name}. Press <ctrl>] to exit chat mode.")
 
-        self.multicast_addr_port = (
-            self.chat_room_address, self.chat_room_port)
+        self.multicast_addr_port = (chat_room_address, chat_room_port)
 
         # Sender
         self.multicast_send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -398,6 +395,8 @@ class Client:
 
         pkt = cmd_field + roomname_size + roomname_bytes + address_bytes + port_str_bytes
 
+        self.chat_rooms.append(
+            {'name': roomname, 'address&port': (address, port)})
         self.socket.send(pkt)
         self.prompt_user_forever()
 
@@ -406,6 +405,9 @@ class Client:
         delete_bytes = roomname.encode(Server.MSG_ENCODING)
         delete_size = len(roomname).to_bytes(1, byteorder='big')
         pkt = cmd_field + delete_size + delete_bytes
+        for room in self.chat_rooms:
+            if room['name'] == roomname:
+                self.chat_rooms.remove(room)
         self.socket.send(pkt)
         self.prompt_user_forever()
 
