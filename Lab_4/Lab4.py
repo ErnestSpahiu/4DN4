@@ -37,7 +37,7 @@ class Server:
     RECV_SIZE = 1024
     BACKLOG = 10
 
-    chatrooms = [{'name': 'Room_0', 'address&port': ['239.0.0.1', '1000']}]
+    chatrooms = [{'name': 'Room_0', 'address': '239.0.0.1', 'port': '1000'}]
 
     def __init__(self):
         self.get_socket()
@@ -93,10 +93,10 @@ class Server:
                 self.getDir(connection)
             if cmd == CMD["MAKEROOM"]:
                 print("Server: Recieved MAKEROOM CMD")
-                error = self.makeRoom(connection)
+                self.makeRoom(connection)
             if cmd == CMD["DELETEROOM"]:
                 print("Server: Recieved DELETEROOM CMD")
-                error = self.deleteRoom(connection)
+                self.deleteRoom(connection)
 
     def getDir(self, connection):
         data_string = json.dumps(self.chatrooms)
@@ -111,11 +111,11 @@ class Server:
             Server.RECV_SIZE).decode(Server.MSG_ENCODING)
 
         for room in self.chatrooms:
-            if list(room['address&port']) == [multicast_ip, multicast_port]:
-                break
-        else:
-            self.chatrooms.append(
-                {'name': roomname, 'address&port': (multicast_ip, multicast_port)})
+            print(room['address'])
+            print(room['port'])
+            if room['address'] != multicast_ip or room['port'] != multicast_port:
+               self.chatrooms.append(
+                {'name': roomname, 'address': multicast_ip, 'port': multicast_port})
 
     def deleteRoom(self, connection):
         roomname_size = int.from_bytes(connection.recv(1), byteorder='big')
